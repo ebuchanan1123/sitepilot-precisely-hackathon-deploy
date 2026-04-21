@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { existsSync } from 'fs';
 import evaluateRouter from './routes/evaluate.js';
 import addressSuggestionsRouter from './routes/addressSuggestions.js';
 import realEstateRouter from './routes/realEstate.js';
@@ -76,5 +78,13 @@ app.get('/api/debug/geocode', async (req, res) => {
     });
   }
 });
+
+const clientDist = path.join(process.cwd(), 'client', 'dist');
+if (existsSync(path.join(clientDist, 'index.html'))) {
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 export default app;

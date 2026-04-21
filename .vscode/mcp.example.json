@@ -1,0 +1,15 @@
+{
+  "servers": {
+    "precisely": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/../precisely-mcp-servers/dis-locate-apis-v2/.venv/bin/python",
+      "args": [
+        "${workspaceFolder}/../precisely-mcp-servers/dis-locate-apis-v2/mcp_servers/precisely_wrapper_server.py"
+      ],
+      "env": {
+        "PRECISELY_API_KEY": "mDbNx5kNFqvWaYGA0Gw8gPDA1F6zFgxP",
+        "PRECISELY_API_SECRET": "dQOO42U2AHu53Joo"
+      }
+    }
+  }
+}

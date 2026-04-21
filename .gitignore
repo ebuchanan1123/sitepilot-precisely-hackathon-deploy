@@ -1,0 +1,15 @@
+node_modules
+dist
+client/node_modules
+server/node_modules
+client/dist
+server/dist
+.DS_Store
+.env
+server/.env
+server/src/.env
+.env.*
+!.env.example
+!**/.env.example
+.vscode/mcp.json
+!.vscode/mcp.example.json

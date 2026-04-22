@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -27,6 +27,19 @@ app.use(cors({
   },
 }));
 app.use(express.json({ limit: '1mb' }));
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (!req.path.startsWith('/api/')) {
+    next();
+    return;
+  }
+
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    console.info(`[api] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now() - startedAt}ms)`);
+  });
+
+  next();
+});
 app.use('/api', evaluateRouter);
 app.use('/api', addressSuggestionsRouter);
 app.use('/api', realEstateRouter);
@@ -93,5 +106,40 @@ if (existsSync(path.join(clientDist, 'index.html'))) {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
+
+app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
+  if (!req.path.startsWith('/api/')) {
+    next(error);
+    return;
+  }
+
+  const status =
+    typeof error === 'object' && error !== null && 'status' in error && typeof error.status === 'number'
+      ? error.status
+      : typeof error === 'object' && error !== null && 'statusCode' in error && typeof error.statusCode === 'number'
+      ? error.statusCode
+      : 500;
+
+  const message = error instanceof Error ? error.message : 'Internal Server Error';
+
+  console.error('Unhandled API error', {
+    method: req.method,
+    url: req.originalUrl,
+    status,
+    message,
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+
+  res.status(status).json({
+    message,
+    status,
+    route: req.originalUrl,
+  });
+});
 
 export default app;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import InputPanel from '../components/InputPanel';
 import ResultsSummary from '../components/ResultsSummary';
 import ScoreBreakdown from '../components/ScoreBreakdown';
@@ -26,10 +26,15 @@ export default function Home() {
   const [isLoadingCommercialSpaces, setIsLoadingCommercialSpaces] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commercialSpacesError, setCommercialSpacesError] = useState<string | null>(null);
+  const [commercialRadiusKm, setCommercialRadiusKm] = useState(4);
 
   const { history, addEntry, removeEntry, clearHistory, toggleSave } = useSearchHistory();
   const [currentEntryId, setCurrentEntryId] = useState<string | null>(null);
   const currentEntry = history.find((entry) => entry.id === currentEntryId);
+  const filteredCommercialSpaces = useMemo(
+    () => commercialSpaces.filter((listing) => listing.distanceKm <= commercialRadiusKm),
+    [commercialSpaces, commercialRadiusKm],
+  );
 
   const handleDownloadReport = () => {
     if (!result) return;
@@ -53,6 +58,7 @@ export default function Home() {
     setIsLoadingCommercialSpaces(false);
     setResult(null);
     setCurrentEntryId(null);
+    setCommercialRadiusKm(4);
     try {
       const data = await evaluateSite({ address, businessType, priorities, selectedAddress });
       setResult(data);
@@ -171,14 +177,14 @@ export default function Home() {
                     score: result.score,
                   }}
                   alternatives={result.alternatives}
-                  commercialListings={commercialSpaces}
+                  commercialListings={filteredCommercialSpaces}
                 />
                 <DecisionHighlights
                   businessType={result.businessType}
                   score={result.score}
                   concerns={result.concerns}
                   strengths={result.strengths}
-                  commercialListings={commercialSpaces}
+                  commercialListings={filteredCommercialSpaces}
                 />
                 <div className="grid gap-5 lg:grid-cols-2">
                   <ScoreBreakdown breakdown={result.breakdown} />
@@ -189,6 +195,8 @@ export default function Home() {
                   listings={commercialSpaces}
                   isLoading={isLoadingCommercialSpaces}
                   error={commercialSpacesError}
+                  radiusKm={commercialRadiusKm}
+                  onRadiusChange={setCommercialRadiusKm}
                 />
               </>
             )}

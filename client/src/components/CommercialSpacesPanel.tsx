@@ -5,6 +5,8 @@ interface CommercialSpacesPanelProps {
   listings: CommercialSpaceRecommendation[];
   isLoading: boolean;
   error: string | null;
+  radiusKm: number;
+  onRadiusChange: (radiusKm: number) => void;
 }
 
 function formatCurrency(value: number): string {
@@ -167,6 +169,8 @@ export default function CommercialSpacesPanel({
   listings,
   isLoading,
   error,
+  radiusKm,
+  onRadiusChange,
 }: CommercialSpacesPanelProps) {
   const [maxRent, setMaxRent] = useState('');
   const [minSquareFeet, setMinSquareFeet] = useState('');
@@ -182,12 +186,13 @@ export default function CommercialSpacesPanel({
     const sizeFloor = minSquareFeet ? Number(minSquareFeet) : null;
 
     return listings.filter((listing) => {
+      if (listing.distanceKm > radiusKm) return false;
       if (rentLimit && listing.askingRentMonthly > rentLimit) return false;
       if (sizeFloor && listing.squareFeet < sizeFloor) return false;
       if (propertyType !== 'Any' && listing.propertyType !== propertyType) return false;
       return true;
     });
-  }, [listings, maxRent, minSquareFeet, propertyType]);
+  }, [listings, maxRent, minSquareFeet, propertyType, radiusKm]);
 
   return (
     <section className="rounded-2xl border border-stone-200 bg-white p-6">
@@ -205,7 +210,25 @@ export default function CommercialSpacesPanel({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <label className="text-xs text-gray-600 sm:col-span-4">
+            <div className="mb-1 flex items-center justify-between font-medium uppercase tracking-wide text-gray-500">
+              <span>Search radius</span>
+              <span>{radiusKm.toFixed(1)} km</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="15"
+              step="0.5"
+              value={radiusKm}
+              onChange={(event) => onRadiusChange(Number(event.target.value))}
+              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-green-600"
+            />
+            <p className="mt-1 text-[11px] text-gray-500">
+              Centered on the evaluated address. Tighten or widen the commercial search area.
+            </p>
+          </label>
           <label className="text-xs text-gray-600">
             <span className="mb-1 block font-medium uppercase tracking-wide text-gray-500">Max monthly rent</span>
             <input
@@ -264,7 +287,7 @@ export default function CommercialSpacesPanel({
       ) : filteredListings.length === 0 ? (
         <div className="mt-6 rounded-xl border border-stone-100 bg-stone-50 p-6 text-center">
           <p className="text-sm font-medium text-gray-700">No commercial spaces match the current filters</p>
-          <p className="mt-1 text-xs text-gray-500">Try widening the rent or size filters to see more listings in the Ottawa-Gatineau beta coverage area.</p>
+          <p className="mt-1 text-xs text-gray-500">Try widening the radius, rent, or size filters to see more listings in the Ottawa-Gatineau beta coverage area.</p>
         </div>
       ) : (
         <div className="mt-4 space-y-2">

@@ -53,6 +53,7 @@ router.post('/real-estate/match', async (req: Request, res: Response) => {
     businessType,
     lat: resolvedLat,
     lng: resolvedLng,
+    targetAddress: typeof targetAddress === 'string' ? targetAddress : undefined,
     budget: typeof budget === 'number' ? budget : undefined,
     desiredSquareFeet: typeof desiredSquareFeet === 'number' ? desiredSquareFeet : undefined,
     preferredPropertyType: preferredPropertyType ?? 'Any',

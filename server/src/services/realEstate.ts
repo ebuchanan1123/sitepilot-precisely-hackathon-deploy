@@ -8,6 +8,7 @@ export interface RealEstateMatchRequest {
   businessType: BusinessType;
   lat: number;
   lng: number;
+  targetAddress?: string;
   budget?: number;
   desiredSquareFeet?: number;
   preferredPropertyType?: CommercialPropertyType | 'Any';
@@ -41,6 +42,8 @@ interface BusinessPreferences {
   sizeWeight: number;
   compatibilityWeight: number;
 }
+
+type RiverSide = 'ottawa' | 'gatineau' | 'unknown';
 
 const BUSINESS_PREFERENCES: Record<BusinessType, BusinessPreferences> = {
   coffee_shop: {
@@ -180,6 +183,53 @@ function scoreCompatibility(listing: CommercialListing, businessType: BusinessTy
   return Math.min(100, score);
 }
 
+function inferRiverSideFromAddress(address?: string): RiverSide {
+  if (!address) {
+    return 'unknown';
+  }
+
+  const lower = address.toLowerCase();
+  if (/\bgatineau\b|\bhull\b|\bqc\b|\bquebec\b/.test(lower)) {
+    return 'gatineau';
+  }
+  if (/\bottawa\b|\bon\b|\bontario\b/.test(lower)) {
+    return 'ottawa';
+  }
+  return 'unknown';
+}
+
+function getRadiusSteps(businessType: BusinessType): number[] {
+  switch (businessType) {
+    case 'coffee_shop':
+    case 'restaurant':
+    case 'bar':
+    case 'retail':
+    case 'salon':
+      return [4, 8, 12];
+    case 'clinic':
+    case 'pharmacy':
+    case 'grocery':
+      return [5, 10, 15];
+    case 'gym':
+      return [6, 12, 18];
+    default:
+      return [5, 10, 15];
+  }
+}
+
+function getSideBias(targetSide: RiverSide, listingAddress: string): number {
+  if (targetSide === 'unknown') {
+    return 0;
+  }
+
+  const listingSide = inferRiverSideFromAddress(listingAddress);
+  if (listingSide === 'unknown') {
+    return 0;
+  }
+
+  return listingSide === targetSide ? 10 : -14;
+}
+
 function buildMatchReasons(
   listing: CommercialListing,
   businessType: BusinessType,
@@ -252,14 +302,16 @@ export async function getCommercialPropertyTypes(): Promise<Array<CommercialProp
 export async function matchCommercialListings(request: RealEstateMatchRequest): Promise<RankedCommercialListing[]> {
   const preferences = BUSINESS_PREFERENCES[request.businessType] ?? BUSINESS_PREFERENCES.coffee_shop;
   const commercialListings = await loadCommercialListings();
+  const targetSide = inferRiverSideFromAddress(request.targetAddress);
 
-  const ranked = commercialListings
+  const scoredListings = commercialListings
     .map((listing) => {
       const distanceKm = calculateDistanceKm(request.lat, request.lng, listing.lat, listing.lng);
       const distanceScore = scoreDistance(distanceKm);
       const affordabilityScore = scoreAffordability(listing.askingRentMonthly, request.budget);
       const sizeScore = scoreSize(listing.squareFeet, request.desiredSquareFeet);
       const compatibilityScore = scoreCompatibility(listing, request.businessType);
+      const sideBias = getSideBias(targetSide, listing.address);
 
       let fitScore = Math.round(
         distanceScore * preferences.distanceWeight +
@@ -272,6 +324,7 @@ export async function matchCommercialListings(request: RealEstateMatchRequest): 
         fitScore += listing.propertyType === request.preferredPropertyType ? 6 : -12;
       }
 
+      fitScore += sideBias;
       fitScore = Math.max(0, Math.min(100, fitScore));
 
       return {
@@ -300,9 +353,20 @@ export async function matchCommercialListings(request: RealEstateMatchRequest): 
         source: listing.source,
       };
     })
-    .filter((listing) => listing.distanceKm <= 8)
-    .sort((a, b) => b.fitScore - a.fitScore || a.distanceKm - b.distanceKm)
-    .slice(0, 8);
+    .sort((a, b) => b.fitScore - a.fitScore || a.distanceKm - b.distanceKm);
+
+  const radiusSteps = getRadiusSteps(request.businessType);
+  let ranked = scoredListings.filter((listing) => listing.distanceKm <= radiusSteps[0]);
+
+  for (const radius of radiusSteps) {
+    const nextListings = scoredListings.filter((listing) => listing.distanceKm <= radius);
+    ranked = nextListings;
+    if (ranked.length >= 8) {
+      break;
+    }
+  }
+
+  ranked = ranked.slice(0, 8);
 
   const results = await Promise.allSettled(
     ranked.map((listing) =>

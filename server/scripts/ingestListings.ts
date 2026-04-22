@@ -6,18 +6,27 @@ import { ensureLiveListingsSchema, getDbPool, hasDatabaseConfigured } from '../s
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outputPath = path.resolve(__dirname, '../data/liveCommercialListings.json');
 const BASE_URL = 'https://www.spacelist.ca';
-const MAX_LISTINGS_PER_REGION = 6;
+const MAX_LISTINGS_PER_PAGE = 20;
+const MAX_LISTINGS_TOTAL = 120;
+const PAGES_TO_FETCH = 3;
 
 const SOURCE_CONFIG = [
   {
     slug: 'ottawa',
-    regionLabel: 'Ottawa, ON',
-    listUrl: `${BASE_URL}/listings/on/ottawa/for-lease`,
+    listPaths: [
+      '/listings/on/ottawa/for-lease',
+      '/listings/on/ottawa/office/for-lease',
+      '/listings/on/ottawa/retail/for-lease',
+      '/listings/on/ottawa/industrial/for-lease',
+    ],
   },
   {
     slug: 'gatineau',
-    regionLabel: 'Gatineau, QC',
-    listUrl: `${BASE_URL}/listings/qc/gatineau/for-lease`,
+    listPaths: [
+      '/listings/qc/gatineau/for-lease',
+      '/listings/qc/gatineau/office/for-lease',
+      '/listings/qc/gatineau/retail/for-lease',
+    ],
   },
 ] as const;
 
@@ -306,7 +315,7 @@ function extractListingCandidates(html: string): ListingCandidate[] {
     });
   }
 
-  return candidates.slice(0, MAX_LISTINGS_PER_REGION);
+  return candidates.slice(0, MAX_LISTINGS_PER_PAGE);
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -322,6 +331,10 @@ async function fetchText(url: string): Promise<string> {
   }
 
   return response.text();
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof Error && /HTTP 404\b/.test(error.message);
 }
 
 async function toListingRecord(candidate: ListingCandidate, sourceSlug: string): Promise<LiveListingRecord> {
@@ -351,13 +364,35 @@ async function toListingRecord(candidate: ListingCandidate, sourceSlug: string):
 }
 
 async function ingestRegion(region: (typeof SOURCE_CONFIG)[number]): Promise<LiveListingRecord[]> {
-  const listHtml = await fetchText(region.listUrl);
-  const candidates = extractListingCandidates(listHtml);
+  const candidatesById = new Map<string, ListingCandidate>();
+
+  for (const listPath of region.listPaths) {
+    for (let page = 1; page <= PAGES_TO_FETCH; page += 1) {
+      const pagePath = page === 1 ? listPath : `${listPath}/page/${page}`;
+      let listHtml: string;
+      try {
+        listHtml = await fetchText(`${BASE_URL}${pagePath}`);
+      } catch (error) {
+        if (isNotFoundError(error)) {
+          break;
+        }
+        throw error;
+      }
+      const candidates = extractListingCandidates(listHtml);
+
+      for (const candidate of candidates) {
+        candidatesById.set(candidate.id, candidate);
+      }
+    }
+  }
+
   const parsedListings = await Promise.allSettled(
-    candidates.map((candidate) => toListingRecord(candidate, `spacelist_${region.slug}`)),
+    [...candidatesById.values()].map((candidate) => toListingRecord(candidate, `spacelist_${region.slug}`)),
   );
 
-  return parsedListings.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+  return parsedListings
+    .flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
+    .slice(0, MAX_LISTINGS_TOTAL);
 }
 
 const allListings = (await Promise.all(SOURCE_CONFIG.map((region) => ingestRegion(region)))).flat();

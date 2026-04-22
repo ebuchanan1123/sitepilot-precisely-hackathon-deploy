@@ -390,37 +390,54 @@ function buildReportHtml({ result, commercialSpaces }: DownloadReportOptions): s
 }
 
 export function downloadPdfReport(options: DownloadReportOptions): void {
+  const html = buildReportHtml(options);
+  const popup = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=900');
+
+  if (popup) {
+    popup.document.open();
+    popup.document.write(html);
+    popup.document.close();
+
+    const printPopup = () => {
+      popup.focus();
+      popup.print();
+    };
+
+    popup.addEventListener('load', () => {
+      window.setTimeout(printPopup, 250);
+    }, { once: true });
+    popup.addEventListener('afterprint', () => popup.close(), { once: true });
+
+    return;
+  }
+
   const iframe = document.createElement('iframe');
   Object.assign(iframe.style, {
     position: 'fixed',
-    top: '-9999px',
-    left: '-9999px',
-    width: '1024px',
-    height: '900px',
-    border: 'none',
-    visibility: 'hidden',
+    top: '0',
+    right: '0',
+    width: '1px',
+    height: '1px',
+    border: '0',
+    opacity: '0',
+    pointerEvents: 'none',
   });
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
-  if (!doc) {
-    document.body.removeChild(iframe);
-    throw new Error('Unable to generate the PDF report.');
-  }
-
-  doc.open();
-  doc.write(buildReportHtml(options));
-  doc.close();
 
   const cleanup = () => {
-    if (document.body.contains(iframe)) document.body.removeChild(iframe);
+    if (document.body.contains(iframe)) {
+      document.body.removeChild(iframe);
+    }
   };
 
-  setTimeout(() => {
+  iframe.onload = () => {
     try {
+      iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
     } finally {
-      setTimeout(cleanup, 1000);
+      window.setTimeout(cleanup, 1000);
     }
-  }, 500);
+  };
+
+  document.body.appendChild(iframe);
+  iframe.srcdoc = html;
 }

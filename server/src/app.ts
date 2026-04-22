@@ -40,10 +40,13 @@ app.get('/api/health/precisely', async (_req, res) => {
     await getPreciselyToken();
     res.send({ status: 'ok', preciselyAuth: 'ok' });
   } catch (error) {
-    res.status(502).send({
-      status: 'degraded',
-      preciselyAuth: 'error',
-      message: error instanceof Error ? error.message : 'Unable to authenticate with Precisely.',
+    const message = error instanceof Error ? error.message : 'Unable to authenticate with Precisely.';
+    const isMissingCredentials = message === 'No Precisely credentials';
+
+    res.status(isMissingCredentials ? 200 : 502).send({
+      status: isMissingCredentials ? 'degraded' : 'error',
+      preciselyAuth: isMissingCredentials ? 'not_configured' : 'error',
+      message,
     });
   }
 });
@@ -60,6 +63,7 @@ app.get('/api/debug/geocode', async (req, res) => {
     const result = await fetchBestGeocodeCandidates(address, 5);
     res.send({
       address,
+      status: 'ok',
       parsed: result.parsed,
       candidates: result.candidates.map((candidate) => ({
         formattedStreetAddress: candidate.formattedStreetAddress,
@@ -73,8 +77,11 @@ app.get('/api/debug/geocode', async (req, res) => {
       })),
     });
   } catch (error) {
-    res.status(500).send({
+    res.status(200).send({
+      address,
+      status: 'degraded',
       message: error instanceof Error ? error.message : 'Unable to debug geocode candidates.',
+      candidates: [],
     });
   }
 });

@@ -111,7 +111,7 @@ export default function ResultsSummary({ result, onDownloadReport }: ResultsSumm
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V4.5m0 12 4.5-4.5M12 16.5l-4.5-4.5M4.5 19.5h15" />
                   </svg>
-                  Download PDF Report
+                  Print / Save PDF
                 </button>
               )}
             </div>

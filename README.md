@@ -33,6 +33,7 @@ Important server variables:
 - `OPENAI_API_KEY`: optional OpenAI summary support
 - `ANTHROPIC_API_KEY`: optional Anthropic summary support
 - `CORS_ORIGIN`: comma-separated allowed frontend origins for split deployments
+- `DATABASE_URL`: optional Postgres connection string for shared live listing storage and cron-based refreshes
 
 Important client variables:
 
@@ -62,6 +63,23 @@ After a successful business location evaluation, the app now fetches a second ra
 - The current implementation uses a small mock Ottawa-area dataset stored in the repo for demo and hackathon use.
 - Listings are ranked with a transparent deterministic fit score based on proximity, affordability, size match, and compatibility with the current business concept.
 - The mock dataset is intentionally provider-agnostic so a live commercial real-estate data source can be plugged into the backend later without redesigning the frontend flow.
+
+## Live Ottawa-Gatineau listing refresh
+
+The repo now supports a lightweight live-listing ingestion flow for Ottawa/Gatineau commercial lease inventory.
+
+- Run `npm run ingest:listings --prefix server` to refresh the `server/data/liveCommercialListings.json` cache.
+- If `DATABASE_URL` is configured, the same ingest job will also upsert listings into Postgres.
+- The runtime API will prefer Postgres listings first, then the JSON cache, then the built-in mock dataset.
+
+For Render automation:
+
+1. Create a Render Postgres database and copy its internal/external connection string into `DATABASE_URL` on the backend web service.
+2. Create a Render cron job pointing at the `server` root directory.
+3. Use:
+   - Build command: `npm install && npm run build`
+   - Start command: `npm run ingest:listings`
+4. Add the same `DATABASE_URL`, `PRECISELY_API_KEY`, and `PRECISELY_API_SECRET` env vars to the cron job.
 
 ## Production build
 

@@ -1,7 +1,8 @@
-import { commercialListings, type CommercialListing, type CommercialPropertyType } from '../data/commercialListings.js';
+import type { CommercialListing, CommercialPropertyType } from '../data/commercialListings.js';
 import type { BusinessType } from './scoring.js';
 import { calculateDistanceKm } from '../utils/helpers.js';
 import { fetchDemographics, type LocationDemographics } from './geocode.js';
+import { getAvailableCommercialPropertyTypes, loadCommercialListings } from './liveListings.js';
 
 export interface RealEstateMatchRequest {
   businessType: BusinessType;
@@ -28,6 +29,8 @@ export interface RankedCommercialListing {
   matchReasons: string[];
   shortDescription: string;
   demographics: LocationDemographics | null;
+  listingUrl?: string;
+  source?: string;
 }
 
 interface BusinessPreferences {
@@ -242,12 +245,13 @@ function buildMatchReasons(
   return reasons.slice(0, 3);
 }
 
-export function getCommercialPropertyTypes(): Array<CommercialPropertyType | 'Any'> {
-  return ['Any', ...new Set(commercialListings.map((listing) => listing.propertyType))];
+export async function getCommercialPropertyTypes(): Promise<Array<CommercialPropertyType | 'Any'>> {
+  return getAvailableCommercialPropertyTypes();
 }
 
 export async function matchCommercialListings(request: RealEstateMatchRequest): Promise<RankedCommercialListing[]> {
   const preferences = BUSINESS_PREFERENCES[request.businessType] ?? BUSINESS_PREFERENCES.coffee_shop;
+  const commercialListings = await loadCommercialListings();
 
   const ranked = commercialListings
     .map((listing) => {
@@ -292,6 +296,8 @@ export async function matchCommercialListings(request: RealEstateMatchRequest): 
         ),
         shortDescription: listing.shortDescription,
         demographics: null as LocationDemographics | null,
+        listingUrl: listing.listingUrl,
+        source: listing.source,
       };
     })
     .filter((listing) => listing.distanceKm <= 8)

@@ -1,11 +1,6 @@
 {
   "installCommand": "npm run install:all",
   "buildCommand": "npm run build",
-  "functions": {
-    "api/index.mts": {
-      "includeFiles": "client/dist/**"
-    }
-  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
   ]

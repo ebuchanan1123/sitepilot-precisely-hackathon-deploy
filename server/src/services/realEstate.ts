@@ -1,7 +1,7 @@
 import type { CommercialListing, CommercialPropertyType } from '../data/commercialListings.js';
 import type { BusinessType } from './scoring.js';
 import { calculateDistanceKm } from '../utils/helpers.js';
-import { fetchDemographics, type LocationDemographics } from './geocode.js';
+import { fetchDemographics, geocodeAddress, type LocationDemographics } from './geocode.js';
 import { getAvailableCommercialPropertyTypes, loadCommercialListings } from './liveListings.js';
 
 export interface RealEstateMatchRequest {
@@ -447,11 +447,19 @@ export async function matchCommercialListings(request: RealEstateMatchRequest): 
   ranked = ranked.slice(0, 8);
 
   const results = await Promise.allSettled(
-    ranked.map((listing) =>
-      fetchDemographics(listing.address)
-        .then((demographics) => ({ ...listing, demographics }))
-        .catch(() => listing),
-    ),
+    ranked.map(async (listing) => {
+      const [preciseGeocode, demographics] = await Promise.all([
+        geocodeAddress(listing.address, { requirePrecise: true }).catch(() => null),
+        fetchDemographics(listing.address).catch(() => null),
+      ]);
+
+      return {
+        ...listing,
+        lat: preciseGeocode?.lat ?? listing.lat,
+        lng: preciseGeocode?.lng ?? listing.lng,
+        demographics,
+      };
+    }),
   );
 
   return results.map((r) => (r.status === 'fulfilled' ? r.value : ranked[results.indexOf(r)]));

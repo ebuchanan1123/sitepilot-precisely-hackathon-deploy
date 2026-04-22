@@ -19,7 +19,7 @@ type MapPoint = {
   address: string;
   lat: number;
   lng: number;
-  kind: 'primary' | 'alternative' | 'listing';
+  kind: 'primary' | 'listing';
   score?: number;
   delta?: number;
   rank?: number;
@@ -30,12 +30,10 @@ type MapPoint = {
 };
 
 function createPinIcon(kind: MapPoint['kind'], rank?: number): DivIcon {
-  const label = kind === 'primary' ? 'P' : kind === 'listing' ? '$' : String(rank ?? '');
+  const label = kind === 'primary' ? 'P' : String(rank ?? '');
   const variantClass = kind === 'primary'
     ? 'map-pin--primary'
-    : kind === 'listing'
-      ? 'map-pin--listing'
-      : 'map-pin--alternative';
+    : 'map-pin--listing';
 
   return L.divIcon({
     className: '',
@@ -88,17 +86,7 @@ export default function LocationMap({ primaryLocation, alternatives, commercialL
         score: primaryLocation.score,
         kind: 'primary',
       },
-      ...alternatives.map((alternative, index) => ({
-        id: `${alternative.lat}-${alternative.lng}-${index}`,
-        address: alternative.address,
-        lat: alternative.lat,
-        lng: alternative.lng,
-        score: alternative.score,
-        kind: 'alternative' as const,
-        delta: alternative.delta,
-        rank: index + 1,
-      })),
-      ...commercialListings.map((listing) => ({
+      ...commercialListings.map((listing, index) => ({
         id: listing.id,
         title: listing.title,
         address: listing.address,
@@ -106,12 +94,13 @@ export default function LocationMap({ primaryLocation, alternatives, commercialL
         lng: listing.lng,
         score: listing.fitScore,
         kind: 'listing' as const,
+        rank: index + 1,
         propertyType: listing.propertyType,
         rent: listing.askingRentMonthly,
         distanceKm: listing.distanceKm,
       })),
     ],
-    [alternatives, commercialListings, primaryLocation.address, primaryLocation.lat, primaryLocation.lng, primaryLocation.score],
+    [commercialListings, primaryLocation.address, primaryLocation.lat, primaryLocation.lng, primaryLocation.score],
   );
 
   const center: LatLngExpression = [primaryLocation.lat, primaryLocation.lng];
@@ -122,7 +111,7 @@ export default function LocationMap({ primaryLocation, alternatives, commercialL
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-600">Location Map</h2>
           <p className="mt-1 text-xs text-gray-500">
-            Proposed site and nearby alternatives plotted from the evaluation coordinates
+            Proposed site and shortlisted commercial listings plotted from resolved listing coordinates
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-medium">
@@ -131,12 +120,8 @@ export default function LocationMap({ primaryLocation, alternatives, commercialL
             Proposed
           </span>
           <span className="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-gray-700">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            Alternatives
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-gray-700">
             <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-            Commercial spaces
+            Commercial spaces (numbered)
           </span>
         </div>
       </div>
@@ -166,17 +151,12 @@ export default function LocationMap({ primaryLocation, alternatives, commercialL
                   <p className="text-xs text-slate-600">
                     {point.kind === 'primary'
                       ? 'Proposed location'
-                      : point.kind === 'listing'
-                        ? point.title ?? 'Commercial space'
-                        : `Alternative #${point.rank}`}
+                      : `${point.rank}. ${point.title ?? 'Commercial space'}`}
                   </p>
                   {typeof point.score === 'number' ? (
                     <p className="text-xs font-medium text-slate-700">
                       {point.kind === 'listing' ? 'Fit score' : 'Score'}: {point.score}/100
                     </p>
-                  ) : null}
-                  {point.kind === 'alternative' && typeof point.delta === 'number' ? (
-                    <p className="text-xs font-medium text-emerald-700">+{point.delta} vs proposed site</p>
                   ) : null}
                   {point.kind === 'listing' ? (
                     <div className="space-y-1">

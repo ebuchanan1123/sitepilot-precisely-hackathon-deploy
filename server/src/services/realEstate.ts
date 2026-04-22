@@ -44,6 +44,11 @@ interface BusinessPreferences {
 }
 
 type RiverSide = 'ottawa' | 'gatineau' | 'unknown';
+type SearchStrategy = {
+  radiusSteps: number[];
+  minimumResultsBeforeExpanding: number;
+  requireSameSideFirst: boolean;
+};
 
 const BUSINESS_PREFERENCES: Record<BusinessType, BusinessPreferences> = {
   coffee_shop: {
@@ -205,15 +210,15 @@ function getRadiusSteps(businessType: BusinessType): number[] {
     case 'bar':
     case 'retail':
     case 'salon':
-      return [4, 8, 12];
+      return [2.5, 4, 6];
     case 'clinic':
     case 'pharmacy':
     case 'grocery':
-      return [5, 10, 15];
+      return [3, 6, 10];
     case 'gym':
-      return [6, 12, 18];
+      return [4, 8, 12];
     default:
-      return [5, 10, 15];
+      return [3, 6, 10];
   }
 }
 
@@ -228,6 +233,58 @@ function getSideBias(targetSide: RiverSide, listingAddress: string): number {
   }
 
   return listingSide === targetSide ? 10 : -14;
+}
+
+function getSearchStrategy(businessType: BusinessType): SearchStrategy {
+  switch (businessType) {
+    case 'coffee_shop':
+    case 'restaurant':
+    case 'bar':
+    case 'retail':
+    case 'salon':
+      return {
+        radiusSteps: getRadiusSteps(businessType),
+        minimumResultsBeforeExpanding: 5,
+        requireSameSideFirst: true,
+      };
+    case 'clinic':
+    case 'pharmacy':
+    case 'grocery':
+      return {
+        radiusSteps: getRadiusSteps(businessType),
+        minimumResultsBeforeExpanding: 5,
+        requireSameSideFirst: true,
+      };
+    default:
+      return {
+        radiusSteps: getRadiusSteps(businessType),
+        minimumResultsBeforeExpanding: 4,
+        requireSameSideFirst: false,
+      };
+  }
+}
+
+function normalizeListingGroupKey(address: string): string {
+  return address
+    .toLowerCase()
+    .replace(/^(suite|unit|local|bureau)\s+[a-z0-9-]+\s*-\s*/i, '')
+    .replace(/^[a-z0-9&/ -]+\s*-\s*(\d+\s)/i, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function dedupeNearbyListings(listings: RankedCommercialListing[]): RankedCommercialListing[] {
+  const listingsByGroup = new Map<string, RankedCommercialListing>();
+
+  for (const listing of listings) {
+    const groupKey = normalizeListingGroupKey(listing.address);
+    const existing = listingsByGroup.get(groupKey);
+    if (!existing || listing.fitScore > existing.fitScore) {
+      listingsByGroup.set(groupKey, listing);
+    }
+  }
+
+  return [...listingsByGroup.values()].sort((a, b) => b.fitScore - a.fitScore || a.distanceKm - b.distanceKm);
 }
 
 function buildMatchReasons(
@@ -303,6 +360,7 @@ export async function matchCommercialListings(request: RealEstateMatchRequest): 
   const preferences = BUSINESS_PREFERENCES[request.businessType] ?? BUSINESS_PREFERENCES.coffee_shop;
   const commercialListings = await loadCommercialListings();
   const targetSide = inferRiverSideFromAddress(request.targetAddress);
+  const searchStrategy = getSearchStrategy(request.businessType);
 
   const scoredListings = commercialListings
     .map((listing) => {
@@ -355,14 +413,34 @@ export async function matchCommercialListings(request: RealEstateMatchRequest): 
     })
     .sort((a, b) => b.fitScore - a.fitScore || a.distanceKm - b.distanceKm);
 
-  const radiusSteps = getRadiusSteps(request.businessType);
-  let ranked = scoredListings.filter((listing) => listing.distanceKm <= radiusSteps[0]);
+  const sameSideListings =
+    searchStrategy.requireSameSideFirst && targetSide !== 'unknown'
+      ? scoredListings.filter((listing) => inferRiverSideFromAddress(listing.address) === targetSide)
+      : scoredListings;
 
-  for (const radius of radiusSteps) {
-    const nextListings = scoredListings.filter((listing) => listing.distanceKm <= radius);
+  let ranked = dedupeNearbyListings(
+    sameSideListings.filter((listing) => listing.distanceKm <= searchStrategy.radiusSteps[0]),
+  );
+
+  for (const radius of searchStrategy.radiusSteps) {
+    const nextListings = dedupeNearbyListings(
+      sameSideListings.filter((listing) => listing.distanceKm <= radius),
+    );
     ranked = nextListings;
-    if (ranked.length >= 8) {
+    if (ranked.length >= searchStrategy.minimumResultsBeforeExpanding) {
       break;
+    }
+  }
+
+  if (ranked.length < searchStrategy.minimumResultsBeforeExpanding) {
+    for (const radius of searchStrategy.radiusSteps) {
+      const nextListings = dedupeNearbyListings(
+        scoredListings.filter((listing) => listing.distanceKm <= radius),
+      );
+      ranked = nextListings;
+      if (ranked.length >= searchStrategy.minimumResultsBeforeExpanding) {
+        break;
+      }
     }
   }
 

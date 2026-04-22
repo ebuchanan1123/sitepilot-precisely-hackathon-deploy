@@ -37,10 +37,24 @@ async function handleEvaluate(req: Request, res: Response) {
   try {
     let geocode;
 
-    if (selectedAddress && typeof selectedAddress.formattedAddress === 'string') {
-      geocode = await geocodeAddress(selectedAddress.formattedAddress, { requirePrecise: true });
+    if (selectedAddress && selectedAddress.lat != null && selectedAddress.lng != null) {
+      // Use coordinates directly from the Precisely autocomplete response — no re-geocoding needed
+      geocode = {
+        raw: address,
+        normalized: selectedAddress.formattedAddress ?? address,
+        lat: selectedAddress.lat,
+        lng: selectedAddress.lng,
+        confidence: 94,
+        confidenceLabel: 'High' as const,
+        city: selectedAddress.city ?? '',
+        state: selectedAddress.region ?? '',
+        fromPrecisely: true,
+      };
     } else {
-      geocode = await geocodeAddress(address, { requirePrecise: requiresPreciseLookup });
+      geocode = await geocodeAddress(
+        selectedAddress?.formattedAddress ?? address,
+        { requirePrecise: false },
+      );
     }
 
     const siteScore = await scoreSite(geocode.lat, geocode.lng, geocode.confidence, bType, pList);

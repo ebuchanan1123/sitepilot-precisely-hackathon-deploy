@@ -76,6 +76,13 @@ export default function Home() {
         document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     } catch (err) {
+      console.error('Site evaluation request failed', {
+        address,
+        businessType,
+        priorities,
+        selectedAddress,
+        error: err,
+      });
       setError((err as Error).message || 'Unexpected error. Please try again.');
     } finally {
       setIsLoading(false);

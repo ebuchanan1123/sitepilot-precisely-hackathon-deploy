@@ -1,12 +1,9 @@
 {
   "installCommand": "npm run install:all",
   "buildCommand": "npm run build",
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "client/dist/**"
-    }
-  },
+  "outputDirectory": "client/dist",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api" }
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!api).*)", "destination": "/index.html" }
   ]
 }

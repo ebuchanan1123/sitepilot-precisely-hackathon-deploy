@@ -57,7 +57,7 @@ async function handleEvaluate(req: Request, res: Response) {
       );
     }
 
-    const siteScore = await scoreSite(geocode.lat, geocode.lng, geocode.confidence, bType, pList);
+    const siteScore = await scoreSite(geocode.lat, geocode.lng, geocode.confidence, bType, pList, geocode.normalized);
     const alternatives = await generateAlternatives(
       geocode.lat, geocode.lng, siteScore.score, bType, pList, geocode.confidence,
     );

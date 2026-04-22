@@ -287,6 +287,13 @@ function dedupeNearbyListings(listings: RankedCommercialListing[]): RankedCommer
   return [...listingsByGroup.values()].sort((a, b) => b.fitScore - a.fitScore || a.distanceKm - b.distanceKm);
 }
 
+function sanitizeListingAddressForGeocode(address: string): string {
+  return address
+    .replace(/^(suite|unit|local|bureau)\s+[a-z0-9-]+\s*-\s*/i, '')
+    .replace(/^[a-z0-9&/ -]+\s*-\s*(\d+\s)/i, '$1')
+    .trim();
+}
+
 function buildMatchReasons(
   listing: CommercialListing,
   businessType: BusinessType,
@@ -449,14 +456,40 @@ export async function matchCommercialListings(request: RealEstateMatchRequest): 
   const results = await Promise.allSettled(
     ranked.map(async (listing) => {
       const [preciseGeocode, demographics] = await Promise.all([
-        geocodeAddress(listing.address, { requirePrecise: true }).catch(() => null),
+        geocodeAddress(sanitizeListingAddressForGeocode(listing.address), { requirePrecise: true }).catch(() => null),
         fetchDemographics(listing.address).catch(() => null),
       ]);
 
+      const resolvedLat = preciseGeocode?.lat ?? listing.lat;
+      const resolvedLng = preciseGeocode?.lng ?? listing.lng;
+      const resolvedDistanceKm = calculateDistanceKm(request.lat, request.lng, resolvedLat, resolvedLng);
+
       return {
         ...listing,
-        lat: preciseGeocode?.lat ?? listing.lat,
-        lng: preciseGeocode?.lng ?? listing.lng,
+        lat: resolvedLat,
+        lng: resolvedLng,
+        distanceKm: parseFloat(resolvedDistanceKm.toFixed(2)),
+        matchReasons: buildMatchReasons(
+          {
+            id: listing.id,
+            title: listing.title,
+            address: listing.address,
+            lat: resolvedLat,
+            lng: resolvedLng,
+            propertyType: listing.propertyType,
+            askingRentMonthly: listing.askingRentMonthly,
+            squareFeet: listing.squareFeet,
+            zoningOrUse: listing.zoningOrUse,
+            parkingSpaces: listing.parkingSpaces,
+            shortDescription: listing.shortDescription,
+            listingUrl: listing.listingUrl,
+            source: listing.source,
+          },
+          request.businessType,
+          resolvedDistanceKm,
+          request.budget,
+          request.desiredSquareFeet,
+        ),
         demographics,
       };
     }),

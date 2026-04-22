@@ -33,11 +33,11 @@ export default function Home() {
 
   const handleDownloadReport = () => {
     if (!result) return;
-
-    downloadPdfReport({
-      result,
-      commercialSpaces,
-    });
+    try {
+      downloadPdfReport({ result, commercialSpaces });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Unable to generate the PDF report.');
+    }
   };
 
   const handleSubmit = async (

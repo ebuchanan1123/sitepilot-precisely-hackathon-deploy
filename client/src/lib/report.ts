@@ -390,18 +390,37 @@ function buildReportHtml({ result, commercialSpaces }: DownloadReportOptions): s
 }
 
 export function downloadPdfReport(options: DownloadReportOptions): void {
-  const reportWindow = window.open('', '_blank', 'noopener,noreferrer,width=1024,height=900');
+  const iframe = document.createElement('iframe');
+  Object.assign(iframe.style, {
+    position: 'fixed',
+    top: '-9999px',
+    left: '-9999px',
+    width: '1024px',
+    height: '900px',
+    border: 'none',
+    visibility: 'hidden',
+  });
+  document.body.appendChild(iframe);
 
-  if (!reportWindow) {
-    throw new Error('Unable to open the PDF report window. Please allow pop-ups and try again.');
+  const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
+  if (!doc) {
+    document.body.removeChild(iframe);
+    throw new Error('Unable to generate the PDF report.');
   }
 
-  reportWindow.document.open();
-  reportWindow.document.write(buildReportHtml(options));
-  reportWindow.document.close();
-  reportWindow.focus();
+  doc.open();
+  doc.write(buildReportHtml(options));
+  doc.close();
 
-  window.setTimeout(() => {
-    reportWindow.print();
-  }, 250);
+  const cleanup = () => {
+    if (document.body.contains(iframe)) document.body.removeChild(iframe);
+  };
+
+  setTimeout(() => {
+    try {
+      iframe.contentWindow?.print();
+    } finally {
+      setTimeout(cleanup, 1000);
+    }
+  }, 500);
 }

@@ -337,12 +337,22 @@ function isNotFoundError(error: unknown): boolean {
   return error instanceof Error && /HTTP 404\b/.test(error.message);
 }
 
+function hasPreciselyCredentials(): boolean {
+  return Boolean(process.env.PRECISELY_API_KEY && process.env.PRECISELY_API_SECRET);
+}
+
 async function toListingRecord(candidate: ListingCandidate, sourceSlug: string): Promise<LiveListingRecord> {
   const address = `${candidate.streetAddress}, ${candidate.city}, ${candidate.region}`;
   const title = `${candidate.rawPropertyType} space at ${candidate.streetAddress}`;
-  const geocode = candidate.lat != null && candidate.lng != null
-    ? { lat: candidate.lat, lng: candidate.lng }
-    : await geocodeAddress(address, { requirePrecise: false });
+  const geocodeTargetAddress = `${candidate.streetAddress
+    .replace(/^(suite|unit|local|bureau)\s+[a-z0-9-]+\s*-\s*/i, '')
+    .replace(/^[a-z0-9&/ -]+\s*-\s*(\d+\s)/i, '$1')}, ${candidate.city}, ${candidate.region}`;
+
+  const geocode = hasPreciselyCredentials()
+    ? await geocodeAddress(geocodeTargetAddress, { requirePrecise: true })
+    : candidate.lat != null && candidate.lng != null
+      ? { lat: candidate.lat, lng: candidate.lng }
+      : await geocodeAddress(geocodeTargetAddress, { requirePrecise: false });
 
   return {
     id: `${sourceSlug}-${slugify(address)}-${candidate.squareFeet}`,

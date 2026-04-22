@@ -47,6 +47,7 @@ const CITY_COORDS: Record<string, [number, number, string]> = {
   'vancouver': [49.2827, -123.1207, 'BC'],
   'montreal': [45.5017, -73.5673, 'QC'],
   'ottawa': [45.4215, -75.6972, 'ON'],
+  'gatineau': [45.4765, -75.7013, 'QC'],
   'calgary': [51.0447, -114.0719, 'AB'],
   'edmonton': [53.5461, -113.4938, 'AB'],
   'winnipeg': [49.8951, -97.1384, 'MB'],

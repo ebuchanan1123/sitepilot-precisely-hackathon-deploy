@@ -114,6 +114,26 @@ function ListingCard({ listing }: { listing: CommercialSpaceRecommendation }) {
             </ul>
           </div>
 
+          {(listing.listingUrl || listing.source) && (
+            <div className="flex flex-wrap items-center gap-3">
+              {listing.listingUrl && (
+                <a
+                  href={listing.listingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:border-stone-400 hover:text-gray-900"
+                >
+                  Open source listing
+                </a>
+              )}
+              {listing.source && (
+                <span className="text-[11px] text-gray-500">
+                  Source: {listing.source}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Area Demographics */}
           {d && (
             <div>
@@ -179,6 +199,10 @@ export default function CommercialSpacesPanel({
           <p className="mt-1 max-w-2xl text-xs text-gray-500">
             Commercial listings near the evaluated area, ranked by how well they fit the business type and location priorities.
           </p>
+          <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Live listing coverage is currently limited to Ottawa-Gatineau and is shown as a beta feature.
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -240,7 +264,7 @@ export default function CommercialSpacesPanel({
       ) : filteredListings.length === 0 ? (
         <div className="mt-6 rounded-xl border border-stone-100 bg-stone-50 p-6 text-center">
           <p className="text-sm font-medium text-gray-700">No commercial spaces match the current filters</p>
-          <p className="mt-1 text-xs text-gray-500">Try widening the rent or size filters to see more listings.</p>
+          <p className="mt-1 text-xs text-gray-500">Try widening the rent or size filters to see more listings in the Ottawa-Gatineau beta coverage area.</p>
         </div>
       ) : (
         <div className="mt-4 space-y-2">

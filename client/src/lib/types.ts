@@ -103,6 +103,8 @@ export interface CommercialSpaceRecommendation {
   matchReasons: string[];
   shortDescription: string;
   demographics: LocationDemographics | null;
+  listingUrl?: string;
+  source?: string;
 }
 
 export interface RealEstateMatchRequest {

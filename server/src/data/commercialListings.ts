@@ -19,6 +19,10 @@ export interface CommercialListing {
   zoningOrUse: string;
   parkingSpaces: number | null;
   shortDescription: string;
+  listingUrl?: string;
+  source?: string;
+  lastSeenAt?: string;
+  isAvailable?: boolean;
 }
 
 export const commercialListings: CommercialListing[] = [

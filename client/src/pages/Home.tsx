@@ -178,7 +178,7 @@ export default function Home() {
                   score={result.score}
                   concerns={result.concerns}
                   strengths={result.strengths}
-                  alternatives={result.alternatives}
+                  commercialListings={commercialSpaces}
                 />
                 <div className="grid gap-5 lg:grid-cols-2">
                   <ScoreBreakdown breakdown={result.breakdown} />

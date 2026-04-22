@@ -1,11 +1,11 @@
-import type { AlternativeLocation, BusinessType } from '../lib/types';
+import type { BusinessType, CommercialSpaceRecommendation } from '../lib/types';
 
 interface DecisionHighlightsProps {
   businessType: BusinessType;
   score: number;
   concerns: string[];
   strengths: string[];
-  alternatives: AlternativeLocation[];
+  commercialListings: CommercialSpaceRecommendation[];
 }
 
 function revenuePotential(score: number, businessType: BusinessType): string {
@@ -42,10 +42,10 @@ export default function DecisionHighlights({
   score,
   concerns,
   strengths,
-  alternatives,
+  commercialListings,
 }: DecisionHighlightsProps) {
   const topReasons = (concerns.length > 0 ? concerns : strengths).slice(0, 3);
-  const bestAlternative = alternatives[0];
+  const bestListing = commercialListings[0];
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
@@ -72,32 +72,43 @@ export default function DecisionHighlights({
       </section>
 
       <section className="rounded-2xl border border-emerald-200 bg-white p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-emerald-700">Better Area Found Nearby</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-emerald-700">Best Commercial Listing Nearby</h2>
         <p className="mt-1 text-xs text-gray-500">
-          A stronger nearby option surfaced by the same evaluation model.
+          Highest-ranked real listing currently surfaced near the evaluated address.
         </p>
 
-        {bestAlternative ? (
+        {bestListing ? (
           <div className="mt-4 space-y-4">
             <div className="rounded-xl bg-emerald-50 px-4 py-3">
-              <p className="text-base font-bold text-gray-900">{bestAlternative.address}</p>
+              <p className="text-base font-bold text-gray-900">{bestListing.address}</p>
               <p className="mt-1 text-sm text-emerald-700">
-                Score {bestAlternative.score} • {bestAlternative.distanceKm} km away
+                Fit {bestListing.fitScore} • {bestListing.distanceKm.toFixed(2)} km away
               </p>
             </div>
 
             <ul className="space-y-2">
-              {bestAlternative.reasons.slice(0, 3).map((reason, index) => (
+              {bestListing.matchReasons.slice(0, 3).map((reason, index) => (
                 <li key={`${reason}-${index}`} className="flex items-start gap-2 text-sm text-gray-700">
                   <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
                   {reason}
                 </li>
               ))}
             </ul>
+
+            {bestListing.listingUrl ? (
+              <a
+                href={bestListing.listingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:border-stone-400 hover:text-gray-900"
+              >
+                Open source listing
+              </a>
+            ) : null}
           </div>
         ) : (
           <p className="mt-4 rounded-xl bg-stone-50 px-4 py-3 text-sm text-gray-600">
-            No clearly stronger nearby trade area surfaced in this pass.
+            No real nearby commercial listing surfaced in this pass.
           </p>
         )}
 

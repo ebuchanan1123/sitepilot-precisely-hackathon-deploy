@@ -17,12 +17,42 @@ const allowedOrigins = (process.env.CORS_ORIGIN ?? '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, '');
+}
+
+function matchesAllowedOrigin(origin: string, allowedOrigin: string): boolean {
+  const normalizedOrigin = normalizeOrigin(origin);
+  const normalizedAllowedOrigin = normalizeOrigin(allowedOrigin);
+
+  if (normalizedAllowedOrigin === normalizedOrigin) {
+    return true;
+  }
+
+  const wildcardMatch = normalizedAllowedOrigin.match(/^https?:\/\/\*\.(.+)$/i);
+  if (wildcardMatch) {
+    const protocol = normalizedAllowedOrigin.startsWith('https://') ? 'https://' : 'http://';
+    const suffix = wildcardMatch[1].toLowerCase();
+    const originLower = normalizedOrigin.toLowerCase();
+
+    return originLower.startsWith(protocol) && originLower.endsWith(`.${suffix}`);
+  }
+
+  return false;
+}
+
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.some((allowedOrigin) => matchesAllowedOrigin(origin, allowedOrigin))) {
       callback(null, true);
       return;
     }
+
+    console.error('CORS rejected origin', {
+      origin,
+      allowedOrigins,
+    });
+
     callback(new Error('Origin not allowed by CORS'));
   },
 }));

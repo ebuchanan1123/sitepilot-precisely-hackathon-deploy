@@ -28,10 +28,13 @@ function timeAgo(timestamp: number): string {
 
 export default function SearchHistory({ history, onRemove, onClear, onToggleSave, currentEntryId }: SearchHistoryProps) {
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<'recent' | 'saved'>('recent');
 
   if (history.length === 0) return null;
 
   const savedCount = history.filter((e) => e.saved).length;
+  const visibleEntries = view === 'saved' ? history.filter((entry) => entry.saved) : history;
+  const visibleCount = visibleEntries.length;
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white">
@@ -67,71 +70,104 @@ export default function SearchHistory({ history, onRemove, onClear, onToggleSave
 
       {open && (
         <div className="border-t border-stone-100">
+          <div className="flex items-center gap-2 border-b border-stone-100 px-5 py-3">
+            <button
+              type="button"
+              onClick={() => setView('recent')}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                view === 'recent'
+                  ? 'bg-stone-900 text-white'
+                  : 'bg-stone-100 text-gray-600 hover:bg-stone-200'
+              }`}
+            >
+              Recent
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('saved')}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                view === 'saved'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-50 text-green-700 hover:bg-green-100'
+              }`}
+            >
+              Saved{savedCount > 0 ? ` (${savedCount})` : ''}
+            </button>
+          </div>
+
           <div className="max-h-72 overflow-y-auto">
-            {history.map((entry) => (
-              <div
-                key={entry.id}
-                className={`flex items-start gap-3 border-b border-stone-100 px-5 py-3 last:border-0 ${
-                  entry.id === currentEntryId ? 'bg-stone-50' : 'hover:bg-stone-50'
-                }`}
-              >
-                {/* Score */}
-                <div className="flex-shrink-0 w-8 text-center pt-0.5">
-                  <span className={`text-base font-bold leading-none ${scoreColor(entry.score)}`}>{entry.score}</span>
-                </div>
-
-                {/* Details */}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-gray-900">{entry.address}</p>
-                  <p className="mt-0.5 text-[11px] text-gray-500">
-                    {entry.businessLabel}
-                    {entry.priorities.length > 0 && (
-                      <> · {entry.priorities.length} {entry.priorities.length === 1 ? 'priority' : 'priorities'}</>
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-gray-400">{timeAgo(entry.timestamp)}</p>
-                </div>
-
-                {/* Confidence badge */}
-                <span
-                  className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    entry.confidenceLevel === 'High'
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : entry.confidenceLevel === 'Medium'
-                      ? 'bg-amber-50 text-amber-700'
-                      : 'bg-red-50 text-red-700'
-                  }`}
-                >
-                  {entry.confidenceLevel}
-                </span>
-
-                {/* Save toggle */}
-                <button
-                  type="button"
-                  onClick={() => onToggleSave(entry.id)}
-                  className={`flex-shrink-0 rounded p-0.5 transition-colors ${
-                    entry.saved ? 'text-green-600 hover:text-green-700' : 'text-gray-300 hover:text-gray-500'
-                  }`}
-                  aria-label={entry.saved ? 'Unsave' : 'Save'}
-                >
-                  <svg className="h-3.5 w-3.5" fill={entry.saved ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
-                  </svg>
-                </button>
-
-                {/* Remove */}
-                <button
-                  type="button"
-                  onClick={() => onRemove(entry.id)}
-                  className="flex-shrink-0 rounded p-0.5 text-gray-300 hover:text-gray-500 transition-colors"
-                  aria-label="Remove"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                  </svg>
-                </button>
+            {visibleEntries.length === 0 ? (
+              <div className="px-5 py-6 text-center">
+                <p className="text-sm font-medium text-gray-700">
+                  {view === 'saved' ? 'No saved locations yet' : 'No recent searches yet'}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {view === 'saved'
+                    ? 'Use the bookmark icon after a search to save locations here.'
+                    : 'Your latest evaluated addresses will appear here.'}
+                </p>
               </div>
-            ))}
+            ) : (
+              visibleEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className={`flex items-start gap-3 border-b border-stone-100 px-5 py-3 last:border-0 ${
+                    entry.id === currentEntryId ? 'bg-stone-50' : 'hover:bg-stone-50'
+                  }`}
+                >
+                  <div className="flex-shrink-0 w-8 text-center pt-0.5">
+                    <span className={`text-base font-bold leading-none ${scoreColor(entry.score)}`}>{entry.score}</span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-gray-900">{entry.address}</p>
+                    <p className="mt-0.5 text-[11px] text-gray-500">
+                      {entry.businessLabel}
+                      {entry.priorities.length > 0 && (
+                        <> · {entry.priorities.length} {entry.priorities.length === 1 ? 'priority' : 'priorities'}</>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-gray-400">{timeAgo(entry.timestamp)}</p>
+                  </div>
+
+                  <span
+                    className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      entry.confidenceLevel === 'High'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : entry.confidenceLevel === 'Medium'
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-red-50 text-red-700'
+                    }`}
+                  >
+                    {entry.confidenceLevel}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => onToggleSave(entry.id)}
+                    className={`flex-shrink-0 rounded p-0.5 transition-colors ${
+                      entry.saved ? 'text-green-600 hover:text-green-700' : 'text-gray-300 hover:text-gray-500'
+                    }`}
+                    aria-label={entry.saved ? 'Unsave' : 'Save'}
+                  >
+                    <svg className="h-3.5 w-3.5" fill={entry.saved ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onRemove(entry.id)}
+                    className="flex-shrink-0 rounded p-0.5 text-gray-300 hover:text-gray-500 transition-colors"
+                    aria-label="Remove"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="border-t border-stone-100 px-5 py-2.5">
@@ -140,7 +176,7 @@ export default function SearchHistory({ history, onRemove, onClear, onToggleSave
               onClick={onClear}
               className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
             >
-              Clear all
+              Clear all history
             </button>
           </div>
         </div>

@@ -1,12 +1,20 @@
-# SitePilot - A Precisely MCP-powered Location Risk Engine
+# SitePilot - Geospatial Site Intelligence
 
-AI-assisted site evaluation app with a React + Vite frontend and an Express + TypeScript backend. The app scores candidate business locations, suggests nearby alternatives, and can enhance explanations with Anthropic or OpenAI when keys are configured.
+SitePilot is an AI-assisted location intelligence app for evaluating business addresses, scoring trade-area potential, and surfacing nearby commercial lease opportunities. It combines a React + Vite frontend with an Express + TypeScript backend, uses Precisely geospatial services for address validation and market signals, and presents both an overall site score and ranked nearby listing recommendations.
+
+This project was built as a portfolio-ready demo focused on:
+
+- evaluating candidate business locations by business type
+- explaining score composition with transparent factor breakdowns
+- surfacing nearby commercial listings in the Ottawa-Gatineau region
+- mapping proposed sites and real listing coordinates interactively
+- generating concise business-facing summaries from the scored results
 
 ## What is included
 
 - `client/`: React UI built with Vite
 - `server/`: Express API with scoring, geocoding, alternatives, and explanation services
-- mocked commercial-space recommendations ranked against the evaluated business/location context
+- live and cached commercial-space recommendations ranked against the evaluated business/location context
 - fallback behavior when external API keys are missing
 - deploy support for either:
   - a single-service deployment where Express serves the built frontend
@@ -56,13 +64,13 @@ npm run dev:client
 
 During local Vite development, the client proxies `/api` requests to `http://localhost:4000`.
 
-## Mocked commercial space recommendations
+## Commercial listing recommendations
 
-After a successful business location evaluation, the app now fetches a second ranked layer of nearby commercial listings under **Recommended Commercial Spaces**.
+After a successful business location evaluation, the app fetches a second ranked layer of nearby commercial listings under **Available Commercial Spaces Nearby**.
 
-- The current implementation uses a small mock Ottawa-area dataset stored in the repo for demo and hackathon use.
-- Listings are ranked with a transparent deterministic fit score based on proximity, affordability, size match, and compatibility with the current business concept.
-- The mock dataset is intentionally provider-agnostic so a live commercial real-estate data source can be plugged into the backend later without redesigning the frontend flow.
+- Listings are ranked with a deterministic fit model based on proximity, affordability, size match, and business-type compatibility.
+- The UI supports numbered map pins, radius filtering, source links, and listing-level demographic enrichment when available.
+- The current live coverage is focused on the Ottawa-Gatineau region.
 
 ## Live Ottawa-Gatineau listing refresh
 
@@ -139,7 +147,7 @@ Frontend:
 
 ### `POST /api/real-estate/match`
 
-Returns ranked mock commercial listings near the evaluated area.
+Returns ranked commercial listings near the evaluated area.
 
 Example request shape:
 

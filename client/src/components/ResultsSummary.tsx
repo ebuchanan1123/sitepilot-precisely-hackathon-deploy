@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ScoreGauge from './ScoreGauge';
 import type { EvaluateResponse } from '../lib/types';
 
@@ -167,9 +168,9 @@ export default function ResultsSummary({ result, onDownloadReport }: ResultsSumm
         </div>
       </section>
 
-      {showMethodology && (
+      {showMethodology && createPortal(
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
           onClick={() => setShowMethodology(false)}
         >
           <div
@@ -222,7 +223,8 @@ export default function ResultsSummary({ result, onDownloadReport }: ResultsSumm
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

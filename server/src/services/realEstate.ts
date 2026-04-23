@@ -312,7 +312,7 @@ function buildMatchReasons(
   if (budget && listing.askingRentMonthly <= budget) {
     reasons.push(`Within the current rent target at CA$${listing.askingRentMonthly.toLocaleString()}/month.`);
   } else if (!budget && listing.askingRentMonthly <= 5000) {
-    reasons.push(`Reasonable monthly rent for a hackathon-ready shortlist at CA$${listing.askingRentMonthly.toLocaleString()}.`);
+    reasons.push(`Reasonable monthly rent relative to nearby options at CA$${listing.askingRentMonthly.toLocaleString()}.`);
   }
 
   if (desiredSquareFeet) {
